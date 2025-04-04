@@ -7,6 +7,10 @@ import http.enums.HttpUrl;
 public class HomeController implements Controller{
     @Override
     public void execute(HttpRequest request, HttpResponse response) throws Exception {
-        response.forward(HttpUrl.INDEX_URL.getPath());
-    }
+        String url = request.getPath();
+        if (url.equals(HttpUrl.ROOT.getPath())) {
+            url = HttpUrl.INDEX_URL.getPath();
+        }
+        response.forward("./webapp" + url);
+        }
 }

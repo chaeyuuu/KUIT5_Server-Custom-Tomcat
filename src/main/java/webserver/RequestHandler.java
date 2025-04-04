@@ -26,9 +26,6 @@ public class RequestHandler implements Runnable {
         this.connection = connection;
     }
 
-    private Controller controller = new ForwardController();
-
-
     @Override
     public void run() {
         log.log(Level.INFO, "New Client Connect! Connected IP : " + connection.getInetAddress() + ", Port : " + connection.getPort());
@@ -38,29 +35,10 @@ public class RequestHandler implements Runnable {
             HttpResponse httpResponse = new HttpResponse(out);
             HttpRequest httpRequest = HttpRequest.from(br);
 
-            String method = httpRequest.getMethod();
-            String url = httpRequest.getPath();
+            RequestMapper requestMapper = new RequestMapper(httpRequest,httpResponse);
+            requestMapper.proceed();
 
-            if (method.equals("GET") && url.endsWith(".html")) {
-                controller = new ForwardController();
-            }
 
-            if (url.equals(HttpUrl.ROOT.getPath())) {
-                controller = new HomeController();
-            }
-
-            if (url.equals(HttpUrl.SIGN_UP.getPath())) {
-                controller = new SignUpController();
-            }
-
-            if (url.equals(HttpUrl.LOGIN.getPath())) {
-                controller = new LoginController();
-            }
-
-            if (url.equals(HttpUrl.USER_LIST.getPath())) {
-                controller = new ListController();
-            }
-            controller.execute(httpRequest, httpResponse);
         } catch (Exception e) {
             log.log(Level.SEVERE, e.getMessage());
             System.out.println(Arrays.toString(e.getStackTrace()));
