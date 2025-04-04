@@ -1,5 +1,6 @@
 package webserver;
 
+import controller.*;
 import db.MemoryUserRepository;
 import http.HttpRequest;
 import http.HttpResponse;
@@ -12,6 +13,7 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,77 +26,46 @@ public class RequestHandler implements Runnable {
         this.connection = connection;
     }
 
+    private Controller controller = new ForwardController();
+
+
     @Override
     public void run() {
-
         log.log(Level.INFO, "New Client Connect! Connected IP : " + connection.getInetAddress() + ", Port : " + connection.getPort());
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
 
             HttpResponse httpResponse = new HttpResponse(out);
             HttpRequest httpRequest = HttpRequest.from(br);
+
             String method = httpRequest.getMethod();
             String url = httpRequest.getPath();
-            String body = httpRequest.getBody();
 
-            // 요구사항 1
+            if (method.equals("GET") && url.endsWith(".html")) {
+                controller = new ForwardController();
+            }
+
             if (url.equals(HttpUrl.ROOT.getPath())) {
-                url = HttpUrl.INDEX_URL.getPath();
+                controller = new HomeController();
             }
 
-
-            // 회원가입
-            if (url.equals(HttpUrl.SIGN_UP.getPath()) && method.equals("POST")) {
-                Map<String, String> params = HttpRequestUtils.parseQueryParameter(body);
-
-                User user = new User(params.get(Userquery.USER_ID.getKey()),
-                        params.get(Userquery.PASSWORD.getKey()),
-                        params.get(Userquery.NAME.getKey()),
-                        params.get(Userquery.EMAIL.getKey()));
-
-                MemoryUserRepository.getInstance().addUser(user);
-                httpResponse.redirect(HttpUrl.INDEX_URL.getPath());
-                return;
+            if (url.equals(HttpUrl.SIGN_UP.getPath())) {
+                controller = new SignUpController();
             }
 
-            // 요구사항 5 - 로그인
-            if (url.equals(HttpUrl.LOGIN.getPath()) && method.equals("POST")) {
-                Map<String, String> params = HttpRequestUtils.parseQueryParameter(body);
-
-                String userId = params.get(Userquery.USER_ID.getKey());
-                String password = params.get(Userquery.PASSWORD.getKey());
-
-                User user = MemoryUserRepository.getInstance().findUserById(userId);
-                checkIdAndPwd(user, password, httpResponse);
-                return;
+            if (url.equals(HttpUrl.LOGIN.getPath())) {
+                controller = new LoginController();
             }
 
-            // user list 반환
             if (url.equals(HttpUrl.USER_LIST.getPath())) {
-                String cookie = httpRequest.getHeader(HttpHeaders.COOKIE.getHttpHeaders());
-                boolean isCookie = cookie != null && cookie.contains("logined=true");
-
-                if (isCookie) {
-                    httpResponse.forward("./webapp" + HttpUrl.LIST.getPath());
-                } else {
-                    httpResponse.redirect(HttpUrl.LOGIN.getPath() + ".html");
-                }
-                return;
+                controller = new ListController();
             }
-
-            httpResponse.forward("./webapp" + url);
-
-        } catch (IOException e) {
+            controller.execute(httpRequest, httpResponse);
+        } catch (Exception e) {
             log.log(Level.SEVERE, e.getMessage());
+            System.out.println(Arrays.toString(e.getStackTrace()));
         }
     }
 
-    private void checkIdAndPwd(User user, String password, HttpResponse httpResponse) throws IOException {
-        if (user != null && user.getPassword().equals(password)) {
-            httpResponse.addHeader(HttpHeaders.SET_COOKIE.getHttpHeaders(), "logined=true");
-            httpResponse.redirect(HttpUrl.INDEX_URL.getPath());
-        } else {
-            httpResponse.redirect(HttpUrl.LOGIN_FAILED.getPath());
-        }
-    }
+
 }
