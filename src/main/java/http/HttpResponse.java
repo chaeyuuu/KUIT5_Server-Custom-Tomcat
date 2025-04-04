@@ -24,7 +24,7 @@ public class HttpResponse {
     }
 
     public void forward(String path) throws IOException {
-        byte[] body = Files.readAllBytes(Paths.get("./webapp" + path));
+        byte[] body = Files.readAllBytes(Paths.get(path));
         addHeader(HttpHeaders.CONTENT_TYPE.getHttpHeaders(), contentType(path));
         addHeader(HttpHeaders.CONTENT_LENGTH.getHttpHeaders(), String.valueOf(body.length));
         writeResponse(HttpStatus.OK.getStatus(), body);
